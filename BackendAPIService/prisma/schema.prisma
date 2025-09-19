@@ -1,0 +1,173 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = env("DATABASE_PROVIDER") // e.g., postgresql, mysql, sqlite
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  passwordHash  String
+  role          UserRole @default(MEMBER)
+  orgId         String?
+  organization  Organization? @relation(fields: [orgId], references: [id])
+  teams         TeamMember[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  sessions      Session[]
+  apiKeys       ApiKey[]
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id])
+  teams       Team[]
+  locations   Location[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  whiteLabel  WhiteLabelConfig?
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  members   TeamMember[]
+  locations Location[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeamMember {
+  id      String @id @default(cuid())
+  teamId  String
+  userId  String
+  team    Team   @relation(fields: [teamId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+  role    TeamRole @default(EDITOR)
+
+  @@unique([teamId, userId])
+}
+
+model Location {
+  id             String   @id @default(cuid())
+  name           String
+  address        String?
+  teamId         String?
+  team           Team?    @relation(fields: [teamId], references: [id])
+  orgId          String
+  org            Organization @relation(fields: [orgId], references: [id])
+  integrations   Integration[]
+  reviews        Review[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Integration {
+  id           String  @id @default(cuid())
+  type         IntegrationType
+  providerId   String? // e.g. Google Place ID, Yelp biz ID, Facebook Page ID
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  locationId   String
+  location     Location @relation(fields: [locationId], references: [id])
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Review {
+  id            String  @id @default(cuid())
+  source        IntegrationType
+  externalId    String
+  locationId    String
+  location      Location @relation(fields: [locationId], references: [id])
+  rating        Int
+  content       String
+  author        String?
+  reviewAt      DateTime
+  sentiment     Sentiment @default(NEUTRAL)
+  aiResponse    String?
+  responseAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([source, externalId])
+  @@index([locationId, reviewAt])
+}
+
+model AnalyticsSnapshot {
+  id          String   @id @default(cuid())
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id])
+  date        DateTime
+  avgRating   Float
+  reviewCount Int
+  positive    Int
+  neutral     Int
+  negative    Int
+  createdAt   DateTime @default(now())
+
+  @@unique([locationId, date])
+}
+
+model WhiteLabelConfig {
+  id        String @id @default(cuid())
+  orgId     String @unique
+  org       Organization @relation(fields: [orgId], references: [id])
+  brandName String?
+  logoUrl   String?
+  primary   String? // hex color
+  secondary String?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  key       String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum TeamRole {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum IntegrationType {
+  GOOGLE
+  YELP
+  FACEBOOK
+}
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
