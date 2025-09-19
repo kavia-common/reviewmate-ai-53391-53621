@@ -15,11 +15,20 @@ Setup:
 - Prisma:
   - npx prisma generate
   - For SQLite dev: set DATABASE_PROVIDER=sqlite and DATABASE_URL="file:./dev.db"; run `npm run prisma:dev`
-- Run: npm run dev
+- Run:
+  - Dev: npm run dev
+  - Prod: npm start
 
 Docs:
 - Swagger UI at /docs
 - Base API mounted at /api
+- Liveness: GET /
+- Health: GET /health
+- Readiness: GET /ready
+
+Notes:
+- The server now starts even if the database is temporarily unavailable. Database-backed routes may respond with errors until the DB is ready.
+- For first-time local dev with SQLite, use DATABASE_PROVIDER=sqlite and DATABASE_URL="file:./dev.db", then run `npm run prisma:dev`.
 
 Security:
 - Use Bearer JWT tokens in Authorization header or x-api-key
